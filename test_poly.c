@@ -8,15 +8,15 @@ void print_test_result(const char* test_name, int passed) {
     tests_total++;
     if (passed) {
         tests_passed++;
-        printf("  ✓ %s: ВЫПОЛНЕНО\n", test_name);
+        printf("%s: ВЫПОЛНЕНО\n", test_name);
     } else {
         tests_failed++;
-        printf("  ✗ %s: ОШИБКА\n", test_name);
+        printf("%s: ОШИБКА\n", test_name);
     }
 }
 
 void test_ascii_creation() {
-    printf("\n--- ТЕСТ: Создание ASCII строк ---\n");
+    printf("\n ТЕСТ: Создание ASCII строк \n");
     
     
     PolyString* str1 = create_poly_string_ascii("Hello");
@@ -44,7 +44,7 @@ void test_ascii_creation() {
 }
 
 void test_wide_creation() {
-    printf("\n--- ТЕСТ: Создание Wide строк ---\n");
+    printf("\n ТЕСТ: Создание Wide строк \n");
     
     
     PolyString* str1 = create_poly_string_wide_from_utf8("Привет");
@@ -78,7 +78,7 @@ void test_wide_creation() {
 }
 
 void test_ascii_concatenation() {
-    printf("\n--- ТЕСТ: Конкатенация ASCII строк ---\n");
+    printf("\n ТЕСТ: Конкатенация ASCII строк \n");
     
     
     PolyString* a1 = create_poly_string_ascii("Hello ");
@@ -119,7 +119,7 @@ void test_ascii_concatenation() {
 }
 
 void test_wide_concatenation() {
-    printf("\n--- ТЕСТ: Конкатенация Wide строк ---\n");
+    printf("\n ТЕСТ: Конкатенация Wide строк \n");
     
     
     PolyString* a1 = create_poly_string_wide_from_utf8("Привет, ");
@@ -157,7 +157,7 @@ void test_wide_concatenation() {
 }
 
 void test_ascii_substring() {
-    printf("\n--- ТЕСТ: Подстроки ASCII ---\n");
+    printf("\n ТЕСТ: Подстроки ASCII \n");
     
     PolyString* str = create_poly_string_ascii("Hello World");
     printf("  Исходная: "); print_poly_string(str); printf("\n");
@@ -205,7 +205,7 @@ void test_ascii_substring() {
 }
 
 void test_wide_substring() {
-    printf("\n--- ТЕСТ: Подстроки Wide ---\n");
+    printf("\n ТЕСТ: Подстроки Wide \n");
     
     PolyString* str = create_poly_string_wide_from_utf8("Привет мир!");
     printf("  Исходная: "); print_poly_string(str); printf("\n");
@@ -237,7 +237,7 @@ void test_wide_substring() {
 }
 
 void test_ascii_find() {
-    printf("\n--- ТЕСТ: Поиск в ASCII строках ---\n");
+    printf("\n ТЕСТ: Поиск в ASCII строках \n");
     
     PolyString* text = create_poly_string_ascii("Hello World, hello world");
     printf("  Текст: "); print_poly_string(text); printf("\n");
@@ -284,7 +284,7 @@ void test_ascii_find() {
 }
 
 void test_wide_find() {
-    printf("\n--- ТЕСТ: Поиск в Wide строках ---\n");
+    printf("\n ТЕСТ: Поиск в Wide строках \n");
     
     PolyString* text = create_poly_string_wide_from_utf8("Привет мир, привет мир");
     printf("  Текст: "); print_poly_string(text); printf("\n");
@@ -321,7 +321,7 @@ void test_wide_find() {
 }
 
 void test_ascii_length() {
-    printf("\n--- ТЕСТ: Длина ASCII строк ---\n");
+    printf("\n ТЕСТ: Длина ASCII строк \n");
     
     PolyString* str1 = create_poly_string_ascii("Hello");
     size_t len1 = poly_string_length(str1);
@@ -347,7 +347,7 @@ void test_ascii_length() {
 }
 
 void test_wide_length() {
-    printf("\n--- ТЕСТ: Длина Wide строк ---\n");
+    printf("\n ТЕСТ: Длина Wide строк \n");
     
     PolyString* str1 = create_poly_string_wide_from_utf8("Привет");
     size_t len1 = poly_string_length(str1);
@@ -375,7 +375,7 @@ void test_wide_length() {
 }
 
 void test_file_conversion() {
-    printf("\n--- ТЕСТ: Конвертация для файла ---\n");
+    printf("\n ТЕСТ: Конвертация для файла \n");
     
     
     PolyString* ascii = create_poly_string_ascii("ASCII text");
@@ -418,7 +418,7 @@ void test_file_conversion() {
 }
 
 void test_mixed_operations() {
-    printf("\n--- ТЕСТ: Смешанные операции ---\n");
+    printf("\n ТЕСТ: Смешанные операции \n");
     
     
     PolyString* s1 = create_poly_string_wide_from_utf8("Привет");
@@ -450,7 +450,7 @@ void test_mixed_operations() {
 }
 
 void test_edge_cases() {
-    printf("\n--- ТЕСТ: Крайние случаи ---\n");
+    printf("\n ТЕСТ: Крайние случаи \n");
     
     
     char long_str[1000];
@@ -506,9 +506,7 @@ void run_all_tests() {
     tests_failed = 0;
     tests_total = 0;
     
-    printf("\n╔══════════════════════════════════════════════════════════╗\n");
-    printf("║           ПОЛНОЕ ТЕСТИРОВАНИЕ ВСЕХ ФУНКЦИЙ               ║\n");
-    printf("╚══════════════════════════════════════════════════════════╝\n");
+    printf("ПОЛНОЕ ТЕСТИРОВАНИЕ ВСЕХ ФУНКЦИЙ\n");
     
     test_ascii_creation();
     test_wide_creation();
@@ -524,13 +522,10 @@ void run_all_tests() {
     test_mixed_operations();
     test_edge_cases();
     
-    printf("\n═══════════════════════════════════════════════════════════\n");
     printf("  ИТОГИ ТЕСТИРОВАНИЯ\n");
-    printf("═══════════════════════════════════════════════════════════\n");
     printf("  Всего тестов: %d\n", tests_total);
     printf("  Пройдено:     %d\n", tests_passed);
     printf("  Провалено:    %d\n", tests_failed);
     printf("  Успешность:   %.1f%%\n", 
            tests_total > 0 ? (tests_passed * 100.0 / tests_total) : 0);
-    printf("═══════════════════════════════════════════════════════════\n\n");
 }
