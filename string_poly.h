@@ -5,6 +5,7 @@
 #include <wchar.h>
 #include <locale.h>
 
+
 typedef struct StringTypeInfo StringTypeInfo;
 
 typedef struct {

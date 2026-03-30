@@ -566,7 +566,7 @@ void run_string_operations_menu() {
     int choice;
     
     do {
-        printf("\n=== РАБОТА СО СТРОКАМИ ===\n");
+        printf("\n РАБОТА СО СТРОКАМИ \n");
         printf("1 - Конкатенация строк\n");
         printf("2 - Получение подстроки\n");
         printf("3 - Поиск подстроки (чувствительный)\n");
