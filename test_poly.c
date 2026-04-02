@@ -17,8 +17,7 @@ char* my_strdup(const char* str) {
     return new_str;
 }
 
-void print_test_result(const char* test_name, int passed, 
-                       const char* expected_str, const char* actual_str) {
+void print_test_result(const char* test_name, int passed, const char* expected_str, const char* actual_str) {
     tests_total++;
     if (passed) {
         tests_passed++;
