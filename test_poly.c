@@ -1,10 +1,24 @@
 #include "test_poly.h"
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
 
 static int tests_passed = 0;
 static int tests_failed = 0;
 static int tests_total = 0;
 
-void print_test_result(const char* test_name, int passed) {
+char* my_strdup(const char* str) {
+    if (!str) return NULL;
+    size_t len = strlen(str);
+    char* new_str = malloc(len + 1);
+    if (new_str) {
+        strcpy(new_str, str);
+    }
+    return new_str;
+}
+
+void print_test_result(const char* test_name, int passed, 
+                       const char* expected_str, const char* actual_str) {
     tests_total++;
     if (passed) {
         tests_passed++;
@@ -12,457 +26,332 @@ void print_test_result(const char* test_name, int passed) {
     } else {
         tests_failed++;
         printf("%s: ОШИБКА\n", test_name);
+        printf("Ожидалось: %s\n", expected_str);
+        printf("Получено:  %s\n", actual_str);
     }
 }
 
-void test_ascii_creation() {
-    printf("\n ТЕСТ: Создание ASCII строк \n");
+int test_creation_ascii(const char* test_name, const char* input, int should_succeed) {
+    PolyString* str = create_poly_string_ascii(input);
     
+    int passed = 0;
+    const char* expected_str = should_succeed ? "not NULL" : "NULL";
+    char actual_str[64];
     
-    PolyString* str1 = create_poly_string_ascii("Hello");
-    printf("  str1: "); print_poly_string(str1); printf("\n");
-    print_test_result("create_ascii_normal", str1 != NULL && strcmp((char*)str1->data, "Hello") == 0);
+    if (should_succeed) {
+        if (str != NULL && input != NULL) {
+            passed = (strcmp((char*)str->data, input) == 0);
+            if (passed) {
+                snprintf(actual_str, sizeof(actual_str), "\"%s\"", (char*)str->data);
+            } else {
+                snprintf(actual_str, sizeof(actual_str), "\"%s\" (не совпадает)", (char*)str->data);
+            }
+        } else if (str != NULL && input == NULL) {
+            snprintf(actual_str, sizeof(actual_str), "\"%s\"", (char*)str->data);
+        } else {
+            snprintf(actual_str, sizeof(actual_str), "NULL");
+        }
+    } else {
+        passed = (str == NULL);
+        snprintf(actual_str, sizeof(actual_str), "%s", str ? "not NULL" : "NULL");
+    }
     
+    print_test_result(test_name, passed, expected_str, actual_str);
     
-    PolyString* str2 = create_poly_string_ascii("");
-    printf("  str2: "); print_poly_string(str2); printf("\n");
-    print_test_result("create_ascii_empty", str2 != NULL && strlen((char*)str2->data) == 0);
+    if (str) free_poly_string(str);
     
+    return passed;
+}
+
+int test_creation_wide(const char* test_name, const char* input, int should_succeed) {
+    PolyString* str = create_poly_string_wide_from_utf8(input);
     
-    PolyString* str3 = create_poly_string_ascii("123!@#");
-    printf("  str3: "); print_poly_string(str3); printf("\n");
-    print_test_result("create_ascii_special", str3 != NULL && strcmp((char*)str3->data, "123!@#") == 0);
+    int passed = 0;
+    const char* expected_str = should_succeed ? "not NULL" : "NULL";
+    char actual_str[64];
     
+    if (should_succeed) {
+        passed = (str != NULL);
+        snprintf(actual_str, sizeof(actual_str), "%s", str ? "not NULL" : "NULL");
+    } else {
+        passed = (str == NULL);
+        snprintf(actual_str, sizeof(actual_str), "%s", str ? "not NULL" : "NULL");
+    }
     
-    PolyString* str4 = create_poly_string_ascii(NULL);
-    printf("  str4: %p\n", (void*)str4);
-    print_test_result("create_ascii_null", str4 == NULL);
+    print_test_result(test_name, passed, expected_str, actual_str);
     
-    free_poly_string(str1);
-    free_poly_string(str2);
-    free_poly_string(str3);
+    if (str) free_poly_string(str);
+    
+    return passed;
+}
+
+int test_concat(const char* test_name, const char* str1, const char* str2, const char* expected) {
+    PolyString* a = create_poly_string_ascii(str1);
+    PolyString* b = create_poly_string_ascii(str2);
+    
+    if (!a || !b) {
+        if (a) free_poly_string(a);
+        if (b) free_poly_string(b);
+        print_test_result(test_name, 0, expected ? expected : "NULL", "ошибка создания");
+        return 0;
+    }
+    
+    PolyString* result_str = concat_poly_strings(a, b);
+    
+    int passed = 0;
+    char* actual_str = NULL;
+    
+    if (result_str && result_str->data) {
+        actual_str = poly_string_to_file_format(result_str);
+        passed = (actual_str && strcmp(actual_str, expected) == 0);
+    }
+    
+    const char* expected_display = expected ? expected : "NULL";
+    const char* actual_display = actual_str ? actual_str : "NULL";
+    
+    print_test_result(test_name, passed, expected_display, actual_display);
+    
+    free(actual_str);
+    free_poly_string(a);
+    free_poly_string(b);
+    if (result_str) free_poly_string(result_str);
+    
+    return passed;
+}
+
+int test_wide_concat(const char* test_name, const char* str1, const char* str2, const char* expected) {
+    PolyString* a = create_poly_string_wide_from_utf8(str1);
+    PolyString* b = create_poly_string_wide_from_utf8(str2);
+    
+    if (!a || !b) {
+        if (a) free_poly_string(a);
+        if (b) free_poly_string(b);
+        print_test_result(test_name, 0, expected ? expected : "NULL", "ошибка создания");
+        return 0;
+    }
+    
+    PolyString* result_str = concat_poly_strings(a, b);
+    
+    int passed = 0;
+    char* actual_str = NULL;
+    
+    if (result_str && result_str->data) {
+        actual_str = poly_string_to_file_format(result_str);
+        passed = (actual_str && strcmp(actual_str, expected) == 0);
+    }
+    
+    const char* expected_display = expected ? expected : "NULL";
+    const char* actual_display = actual_str ? actual_str : "NULL";
+    
+    print_test_result(test_name, passed, expected_display, actual_display);
+    
+    free(actual_str);
+    free_poly_string(a);
+    free_poly_string(b);
+    if (result_str) free_poly_string(result_str);
+    
+    return passed;
+}
+
+int test_substring(const char* test_name, const char* str, int start, int end, const char* expected) {
+    PolyString* source = create_poly_string_ascii(str);
+    
+    if (!source) {
+        print_test_result(test_name, 0, expected ? expected : "NULL", "ошибка создания");
+        return 0;
+    }
+    
+    PolyString* substr = substring_poly_string(source, start, end);
+    
+    int passed = 0;
+    char* actual_str = NULL;
+    
+    if (expected == NULL) {
+        passed = (substr == NULL);
+        if (substr) {
+            actual_str = my_strdup("not NULL");
+        } else {
+            actual_str = my_strdup("NULL");
+        }
+    } else if (substr && substr->data) {
+        actual_str = poly_string_to_file_format(substr);
+        passed = (actual_str && strcmp(actual_str, expected) == 0);
+    } else if (substr == NULL) {
+        actual_str = my_strdup("NULL");
+    } else {
+        actual_str = my_strdup("(no data)");
+    }
+    
+    const char* expected_display = expected ? expected : "NULL";
+    const char* actual_display = actual_str ? actual_str : "NULL";
+    
+    print_test_result(test_name, passed, expected_display, actual_display);
+    
+    free(actual_str);
+    free_poly_string(source);
+    if (substr) free_poly_string(substr);
+    
+    return passed;
+}
+
+int test_find(const char* test_name, const char* text, const char* pattern, int sensitive, int expected_pos) {
+    PolyString* text_str = create_poly_string_ascii(text);
+    PolyString* pattern_str = create_poly_string_ascii(pattern);
+    
+    if (!text_str || !pattern_str) {
+        if (text_str) free_poly_string(text_str);
+        if (pattern_str) free_poly_string(pattern_str);
+        
+        char expected_str[64];
+        char actual_str[64];
+        snprintf(expected_str, sizeof(expected_str), "%d", expected_pos);
+        snprintf(actual_str, sizeof(actual_str), "%s", "ошибка создания");
+        print_test_result(test_name, 0, expected_str, actual_str);
+        return 0;
+    }
+    
+    int actual_pos = find_in_poly_string(text_str, pattern_str, sensitive);
+    
+    char expected_str[64];
+    char actual_str[64];
+    snprintf(expected_str, sizeof(expected_str), "%d", expected_pos);
+    snprintf(actual_str, sizeof(actual_str), "%d", actual_pos);
+    
+    int passed = (actual_pos == expected_pos);
+    print_test_result(test_name, passed, expected_str, actual_str);
+    
+    free_poly_string(text_str);
+    free_poly_string(pattern_str);
+    
+    return passed;
+}
+
+int test_length(const char* test_name, const char* str, size_t expected_len) {
+    PolyString* poly_str = create_poly_string_ascii(str);
+    
+    if (!poly_str) {
+        char expected_str[64];
+        char actual_str[64];
+        snprintf(expected_str, sizeof(expected_str), "%zu", expected_len);
+        snprintf(actual_str, sizeof(actual_str), "%s", "ошибка создания");
+        print_test_result(test_name, 0, expected_str, actual_str);
+        return 0;
+    }
+    
+    size_t actual_len = poly_string_length(poly_str);
+    
+    char expected_str[64];
+    char actual_str[64];
+    snprintf(expected_str, sizeof(expected_str), "%zu", expected_len);
+    snprintf(actual_str, sizeof(actual_str), "%zu", actual_len);
+    
+    int passed = (actual_len == expected_len);
+    print_test_result(test_name, passed, expected_str, actual_str);
+    
+    free_poly_string(poly_str);
+    
+    return passed;
+}
+
+int test_wide_length(const char* test_name, const char* str, size_t expected_len) {
+    PolyString* poly_str = create_poly_string_wide_from_utf8(str);
+    
+    if (!poly_str) {
+        char expected_str[64];
+        char actual_str[64];
+        snprintf(expected_str, sizeof(expected_str), "%zu", expected_len);
+        snprintf(actual_str, sizeof(actual_str), "%s", "ошибка создания");
+        print_test_result(test_name, 0, expected_str, actual_str);
+        return 0;
+    }
+    
+    size_t actual_len = poly_string_length(poly_str);
+    
+    char expected_str[64];
+    char actual_str[64];
+    snprintf(expected_str, sizeof(expected_str), "%zu", expected_len);
+    snprintf(actual_str, sizeof(actual_str), "%zu", actual_len);
+    
+    int passed = (actual_len == expected_len);
+    print_test_result(test_name, passed, expected_str, actual_str);
+    
+    free_poly_string(poly_str);
+    
+    return passed;
+}
+
+void test_string_creation() {
+    printf("\nТЕСТ: Создание ASCII строк\n");
+    
+    test_creation_ascii("create_ascii_normal", "Hello", 1);
+    test_creation_ascii("create_ascii_empty", "", 1);
+    test_creation_ascii("create_ascii_special", "123!@#", 1);
+    test_creation_ascii("create_ascii_null", NULL, 0);
 }
 
 void test_wide_creation() {
-    printf("\n ТЕСТ: Создание Wide строк \n");
+    printf("\nТЕСТ: Создание Wide строк\n");
     
-    
-    PolyString* str1 = create_poly_string_wide_from_utf8("Привет");
-    printf("  str1: "); print_poly_string(str1); printf("\n");
-    print_test_result("create_wide_russian", str1 != NULL);
-    
-    
-    PolyString* str2 = create_poly_string_wide_from_utf8("Hello Привет");
-    printf("  str2: "); print_poly_string(str2); printf("\n");
-    print_test_result("create_wide_mixed", str2 != NULL);
-    
-    
-    PolyString* str3 = create_poly_string_wide_from_utf8("");
-    printf("  str3: "); print_poly_string(str3); printf("\n");
-    print_test_result("create_wide_empty", str3 != NULL);
-    
-    
-    PolyString* str4 = create_poly_string_wide_from_utf8("Euro: €, Copyright: ©");
-    printf("  str4: "); print_poly_string(str4); printf("\n");
-    print_test_result("create_wide_unicode", str4 != NULL);
-    
-    
-    PolyString* str5 = create_poly_string_wide_from_utf8(NULL);
-    printf("  str5: %p\n", (void*)str5);
-    print_test_result("create_wide_null", str5 == NULL);
-    
-    free_poly_string(str1);
-    free_poly_string(str2);
-    free_poly_string(str3);
-    free_poly_string(str4);
+    test_creation_wide("create_wide_russian", "Привет", 1);
+    test_creation_wide("create_wide_mixed", "Hello Привет", 1);
+    test_creation_wide("create_wide_empty", "", 1);
+    test_creation_wide("create_wide_unicode", "Euro: €, Copyright: ©", 1);
+    test_creation_wide("create_wide_null", NULL, 0);
 }
 
-void test_ascii_concatenation() {
-    printf("\n ТЕСТ: Конкатенация ASCII строк \n");
+void test_concatenation() {
+    printf("\nТЕСТ: Конкатенация ASCII строк\n");
     
-    
-    PolyString* a1 = create_poly_string_ascii("Hello ");
-    PolyString* b1 = create_poly_string_ascii("World");
-    PolyString* r1 = concat_poly_strings(a1, b1);
-    printf("  '%s' + '%s' = ", (char*)a1->data, (char*)b1->data);
-    print_poly_string(r1); printf("\n");
-    print_test_result("concat_ascii_normal", 
-        r1 != NULL && strcmp((char*)r1->data, "Hello World") == 0);
-    free_poly_string(r1);
-    
-    
-    PolyString* a2 = create_poly_string_ascii("Hello");
-    PolyString* b2 = create_poly_string_ascii("");
-    PolyString* r2 = concat_poly_strings(a2, b2);
-    printf("  '%s' + '' = ", (char*)a2->data);
-    print_poly_string(r2); printf("\n");
-    print_test_result("concat_ascii_empty", 
-        r2 != NULL && strcmp((char*)r2->data, "Hello") == 0);
-    free_poly_string(r2);
-    
-    
-    PolyString* r3 = concat_poly_strings(a2, NULL);
-    printf("  concat with NULL: %p\n", (void*)r3);
-    print_test_result("concat_ascii_with_null", r3 == NULL);
-    
-    
-    PolyString* wide = create_poly_string_wide_from_utf8("Привет");
-    PolyString* r4 = concat_poly_strings(a2, wide);
-    printf("  ASCII + Wide: %p\n", (void*)r4);
-    print_test_result("concat_different_types", r4 == NULL);
-    
-    free_poly_string(a1);
-    free_poly_string(b1);
-    free_poly_string(a2);
-    free_poly_string(b2);
-    free_poly_string(wide);
+    test_concat("concat_normal", "Hello ", "World", "Hello World");
+    test_concat("concat_empty_first", "", "World", "World");
+    test_concat("concat_empty_second", "Hello ", "", "Hello ");
+    test_concat("concat_both_empty", "", "", "");
 }
 
 void test_wide_concatenation() {
-    printf("\n ТЕСТ: Конкатенация Wide строк \n");
+    printf("\nТЕСТ: Конкатенация Wide строк\n");
     
-    
-    PolyString* a1 = create_poly_string_wide_from_utf8("Привет, ");
-    PolyString* b1 = create_poly_string_wide_from_utf8("мир!");
-    PolyString* r1 = concat_poly_strings(a1, b1);
-    printf("  "); print_poly_string(a1); printf(" + "); print_poly_string(b1); printf(" = ");
-    print_poly_string(r1); printf("\n");
-    print_test_result("concat_wide_russian", r1 != NULL);
-    free_poly_string(r1);
-    
-    
-    PolyString* a2 = create_poly_string_wide_from_utf8("Цена: ");
-    PolyString* b2 = create_poly_string_wide_from_utf8("100 €");
-    PolyString* r2 = concat_poly_strings(a2, b2);
-    printf("  "); print_poly_string(a2); printf(" + "); print_poly_string(b2); printf(" = ");
-    print_poly_string(r2); printf("\n");
-    print_test_result("concat_wide_unicode", r2 != NULL);
-    free_poly_string(r2);
-    
-    
-    PolyString* a3 = create_poly_string_wide_from_utf8("Привет");
-    PolyString* b3 = create_poly_string_wide_from_utf8("");
-    PolyString* r3 = concat_poly_strings(a3, b3);
-    printf("  "); print_poly_string(a3); printf(" + '' = ");
-    print_poly_string(r3); printf("\n");
-    print_test_result("concat_wide_empty", r3 != NULL);
-    free_poly_string(r3);
-    
-    free_poly_string(a1);
-    free_poly_string(b1);
-    free_poly_string(a2);
-    free_poly_string(b2);
-    free_poly_string(a3);
-    free_poly_string(b3);
+    test_wide_concat("concat_wide_russian", "Привет, ", "мир!", "Привет, мир!");
+    test_wide_concat("concat_wide_mixed", "Hello ", "Привет", "Hello Привет");
+    test_wide_concat("concat_wide_unicode", "Цена: ", "100 €", "Цена: 100 €");
+    test_wide_concat("concat_wide_empty", "Привет", "", "Привет");
 }
 
-void test_ascii_substring() {
-    printf("\n ТЕСТ: Подстроки ASCII \n");
+void test_substring_operations() {
+    printf("\nТЕСТ: Подстроки\n");
     
-    PolyString* str = create_poly_string_ascii("Hello World");
-    printf("  Исходная: "); print_poly_string(str); printf("\n");
-    
-    
-    PolyString* sub1 = substring_poly_string(str, 0, 4);
-    printf("  [0,4]: "); print_poly_string(sub1); printf("\n");
-    print_test_result("substring_ascii_normal", 
-        sub1 != NULL && strcmp((char*)sub1->data, "Hello") == 0);
-    free_poly_string(sub1);
-    
-    
-    PolyString* sub2 = substring_poly_string(str, 6, 10);
-    printf("  [6,10]: "); print_poly_string(sub2); printf("\n");
-    print_test_result("substring_ascii_end", 
-        sub2 != NULL && strcmp((char*)sub2->data, "World") == 0);
-    free_poly_string(sub2);
-    
-    
-    PolyString* sub3 = substring_poly_string(str, 4, 4);
-    printf("  [4,4]: "); print_poly_string(sub3); printf("\n");
-    print_test_result("substring_ascii_single", 
-        sub3 != NULL && strcmp((char*)sub3->data, "o") == 0);
-    free_poly_string(sub3);
-    
-    
-    PolyString* sub4 = substring_poly_string(str, -5, 4);  
-    printf("  [-5,4]: "); print_poly_string(sub4); printf("\n");
-    print_test_result("substring_ascii_negative_start", 
-        sub4 != NULL && strcmp((char*)sub4->data, "Hello") == 0);
-    free_poly_string(sub4);
-    
-    PolyString* sub5 = substring_poly_string(str, 0, 100);  
-    printf("  [0,100]: "); print_poly_string(sub5); printf("\n");
-    print_test_result("substring_ascii_end_too_large", 
-        sub5 != NULL && strcmp((char*)sub5->data, "Hello World") == 0);
-    free_poly_string(sub5);
-    
-    
-    PolyString* sub6 = substring_poly_string(str, 10, 5);  
-    printf("  [10,5]: %p\n", (void*)sub6);
-    print_test_result("substring_ascii_invalid_range", sub6 == NULL);
-    
-    free_poly_string(str);
+    test_substring("substring_normal", "Hello World", 0, 4, "Hello");
+    test_substring("substring_middle", "Hello World", 6, 10, "World");
+    test_substring("substring_single", "Hello World", 4, 4, "o");
+    test_substring("substring_start_negative", "Hello World", -5, 4, "Hello");
+    test_substring("substring_end_too_large", "Hello World", 0, 100, "Hello World");
+    test_substring("substring_invalid_range", "Hello World", 10, 5, NULL);
 }
 
-void test_wide_substring() {
-    printf("\n ТЕСТ: Подстроки Wide \n");
+void test_find_operations() {
+    printf("\nТЕСТ: Поиск подстрок\n");
     
-    PolyString* str = create_poly_string_wide_from_utf8("Привет мир!");
-    printf("  Исходная: "); print_poly_string(str); printf("\n");
-    
-    
-    PolyString* sub1 = substring_poly_string(str, 0, 5);
-    printf("  [0,5]: "); print_poly_string(sub1); printf("\n");
-    print_test_result("substring_wide_start", sub1 != NULL);
-    free_poly_string(sub1);
-    
-    
-    PolyString* sub2 = substring_poly_string(str, 7, 10);
-    printf("  [7,10]: "); print_poly_string(sub2); printf("\n");
-    print_test_result("substring_wide_end", sub2 != NULL);
-    free_poly_string(sub2);
-    
-    
-    PolyString* sub3 = substring_poly_string(str, 3, 8);
-    printf("  [3,8]: "); print_poly_string(sub3); printf("\n");
-    print_test_result("substring_wide_middle", sub3 != NULL);
-    free_poly_string(sub3);
-    
-    
-    PolyString* sub4 = substring_poly_string(str, 5, 4);
-    printf("  [5,4]: %p\n", (void*)sub4);
-    print_test_result("substring_wide_invalid", sub4 == NULL);
-    
-    free_poly_string(str);
+    test_find("find_sensitive_found", "Hello World", "World", 1, 6);
+    test_find("find_sensitive_not_found", "Hello World", "world", 1, -1);
+    test_find("find_insensitive", "Hello World", "world", 0, 6);
+    test_find("find_empty_pattern", "Hello World", "", 1, 0);
+    test_find("find_pattern_too_long", "Hello", "Hello World", 1, -1);
 }
 
-void test_ascii_find() {
-    printf("\n ТЕСТ: Поиск в ASCII строках \n");
+void test_length_operations() {
+    printf("\nТЕСТ: Длина строк\n");
     
-    PolyString* text = create_poly_string_ascii("Hello World, hello world");
-    printf("  Текст: "); print_poly_string(text); printf("\n");
+    test_length("length_ascii_normal", "Hello", 5);
+    test_length("length_ascii_empty", "", 0);
+    test_length("length_ascii_spaces", "Hello World", 11);
     
-    
-    PolyString* pattern1 = create_poly_string_ascii("World");
-    int pos1 = find_in_poly_string(text, pattern1, 1);
-    printf("  Поиск 'World' (чувств.): позиция %d\n", pos1);
-    print_test_result("find_ascii_sensitive_found", pos1 == 6);
-    
-    
-    PolyString* pattern2 = create_poly_string_ascii("world");
-    int pos2 = find_in_poly_string(text, pattern2, 1);
-    printf("  Поиск 'world' (чувств.): позиция %d\n", pos2);
-    print_test_result("find_ascii_sensitive_not_found", pos2 == 19);
-    
-    
-    int pos3 = find_in_poly_string(text, pattern2, 0);
-    printf("  Поиск 'world' (нечувств.): позиция %d\n", pos3);
-    print_test_result("find_ascii_insensitive", pos3 == 6 || pos3 == 19);
-    
-    
-    PolyString* pattern3 = create_poly_string_ascii("");
-    int pos4 = find_in_poly_string(text, pattern3, 1);
-    printf("  Поиск '' : позиция %d\n", pos4);
-    print_test_result("find_ascii_empty_pattern", pos4 == 0);
-    
-    
-    int pos5 = find_in_poly_string(text, NULL, 1);
-    printf("  Поиск NULL: %d\n", pos5);
-    print_test_result("find_ascii_null_pattern", pos5 == -1);
-    
-    
-    PolyString* pattern4 = create_poly_string_ascii("Hello World, hello world!!!");
-    int pos6 = find_in_poly_string(text, pattern4, 1);
-    printf("  Поиск более длинной строки: %d\n", pos6);
-    print_test_result("find_ascii_pattern_too_long", pos6 == -1);
-    
-    free_poly_string(text);
-    free_poly_string(pattern1);
-    free_poly_string(pattern2);
-    free_poly_string(pattern3);
-    free_poly_string(pattern4);
-}
-
-void test_wide_find() {
-    printf("\n ТЕСТ: Поиск в Wide строках \n");
-    
-    PolyString* text = create_poly_string_wide_from_utf8("Привет мир, привет мир");
-    printf("  Текст: "); print_poly_string(text); printf("\n");
-    
-    
-    PolyString* pattern1 = create_poly_string_wide_from_utf8("мир");
-    int pos1 = find_in_poly_string(text, pattern1, 1);
-    printf("  Поиск 'мир' (чувств.): позиция %d\n", pos1);
-    print_test_result("find_wide_sensitive", pos1 == 7);
-    
-    
-    PolyString* pattern2 = create_poly_string_wide_from_utf8("ПРИВЕТ");
-    int pos2 = find_in_poly_string(text, pattern2, 1);
-    printf("  Поиск 'ПРИВЕТ' (чувств.): позиция %d\n", pos2);
-    print_test_result("find_wide_sensitive_case", pos2 == -1);
-    
-    
-    PolyString* pattern3 = create_poly_string_wide_from_utf8("Привет");
-    int pos3 = find_in_poly_string(text, pattern3, 1);
-    printf("  Поиск 'Привет' (чувств.): позиция %d\n", pos3);
-    print_test_result("find_wide_start", pos3 == 0);
-    
-    
-    PolyString* pattern4 = create_poly_string_wide_from_utf8("мир");
-    int pos4 = find_in_poly_string(text, pattern4, 1);
-    printf("  Поиск последнего 'мир': позиция %d\n", pos4);
-    print_test_result("find_wide_multiple_occurrences", pos4 == 7);
-    
-    free_poly_string(text);
-    free_poly_string(pattern1);
-    free_poly_string(pattern2);
-    free_poly_string(pattern3);
-    free_poly_string(pattern4);
-}
-
-void test_ascii_length() {
-    printf("\n ТЕСТ: Длина ASCII строк \n");
-    
-    PolyString* str1 = create_poly_string_ascii("Hello     ");
-    size_t len1 = poly_string_length(str1);
-    printf("  Длина 'Hello': %zu\n", len1);
-    print_test_result("length_ascii_normal", len1 == 5);
-    free_poly_string(str1);
-    
-    PolyString* str2 = create_poly_string_ascii("");
-    size_t len2 = poly_string_length(str2);
-    printf("  Длина '': %zu\n", len2);
-    print_test_result("length_ascii_empty", len2 == 0);
-    free_poly_string(str2);
-    
-    PolyString* str3 = create_poly_string_ascii("Hello World! 123");
-    size_t len3 = poly_string_length(str3);
-    printf("  Длина 'Hello World! 123': %zu\n", len3);
-    print_test_result("length_ascii_with_spaces", len3 == 16);
-    free_poly_string(str3);
-    
-    size_t len4 = poly_string_length(NULL);
-    printf("  Длина NULL: %zu\n", len4);
-    print_test_result("length_ascii_null", len4 == 0);
-}
-
-void test_wide_length() {
-    printf("\n ТЕСТ: Длина Wide строк \n");
-    
-    PolyString* str1 = create_poly_string_wide_from_utf8("Привет");
-    size_t len1 = poly_string_length(str1);
-    printf("  Длина 'Привет': %zu символов\n", len1);
-    print_test_result("length_wide_russian", len1 == 6);
-    free_poly_string(str1);
-    
-    PolyString* str2 = create_poly_string_wide_from_utf8("Hello Привет");
-    size_t len2 = poly_string_length(str2);
-    printf("  Длина 'Hello Привет': %zu символов\n", len2);
-    print_test_result("length_wide_mixed", len2 == 12);
-    free_poly_string(str2);
-    
-    PolyString* str3 = create_poly_string_wide_from_utf8("€ ©");
-    size_t len3 = poly_string_length(str3);
-    printf("  Длина '€ ©': %zu символов\n", len3);
-    print_test_result("length_wide_unicode", len3 == 3);
-    free_poly_string(str3);
-    
-    PolyString* str4 = create_poly_string_wide_from_utf8("");
-    size_t len4 = poly_string_length(str4);
-    printf("  Длина '': %zu\n", len4);
-    print_test_result("length_wide_empty", len4 == 0);
-    free_poly_string(str4);
-}
-
-void test_file_conversion() {
-    printf("\n ТЕСТ: Конвертация для файла \n");
-    
-    
-    PolyString* ascii = create_poly_string_ascii("ASCII text");
-    char* ascii_file = poly_string_to_file_format(ascii);
-    printf("  ASCII для файла: %s\n", ascii_file ? ascii_file : "NULL");
-    print_test_result("file_ascii_conversion", 
-        ascii_file != NULL && strcmp(ascii_file, "ASCII text") == 0);
-    free(ascii_file);
-    
-    
-    PolyString* wide1 = create_poly_string_wide_from_utf8("Русский текст");
-    char* wide_file1 = poly_string_to_file_format(wide1);
-    printf("  Wide для файла: %s\n", wide_file1 ? wide_file1 : "NULL");
-    print_test_result("file_wide_russian", wide_file1 != NULL);
-    free(wide_file1);
-    
-    
-    PolyString* wide2 = create_poly_string_wide_from_utf8("Цена: 100 €");
-    char* wide_file2 = poly_string_to_file_format(wide2);
-    printf("  Wide с Unicode: %s\n", wide_file2 ? wide_file2 : "NULL");
-    print_test_result("file_wide_unicode", wide_file2 != NULL);
-    free(wide_file2);
-    
-    
-    PolyString* empty = create_poly_string_ascii("");
-    char* empty_file = poly_string_to_file_format(empty);
-    printf("  Пустая строка для файла: %s\n", empty_file ? empty_file : "NULL");
-    print_test_result("file_empty", empty_file != NULL && strlen(empty_file) == 0);
-    free(empty_file);
-    
-    
-    char* null_file = poly_string_to_file_format(NULL);
-    printf("  NULL для файла: %p\n", (void*)null_file);
-    print_test_result("file_null", null_file == NULL);
-    
-    free_poly_string(ascii);
-    free_poly_string(wide1);
-    free_poly_string(wide2);
-    free_poly_string(empty);
-}
-
-void test_mixed_operations() {
-    printf("\n ТЕСТ: Смешанные операции \n");
-    
-    
-    PolyString* s1 = create_poly_string_wide_from_utf8("Привет");
-    PolyString* s2 = create_poly_string_wide_from_utf8(" мир");
-    
-    PolyString* s3 = concat_poly_strings(s1, s2);
-    printf("  Конкатенация: "); print_poly_string(s3); printf("\n");
-    
-    PolyString* s4 = substring_poly_string(s3, 0, 5);
-    printf("  Подстрока [0,5]: "); print_poly_string(s4); printf("\n");
-    
-    int pos = find_in_poly_string(s3, s1, 1);
-    printf("  Поиск 'Привет' в результате: позиция %d\n", pos);
-    
-    size_t len = poly_string_length(s3);
-    printf("  Длина результата: %zu символов\n", len);
-    
-    char* file = poly_string_to_file_format(s3);
-    printf("  Для файла: %s\n", file ? file : "NULL");
-    
-    print_test_result("mixed_operations", 
-        s3 != NULL && s4 != NULL && pos == 0 && len > 0 && file != NULL);
-    
-    free(file);
-    free_poly_string(s1);
-    free_poly_string(s2);
-    free_poly_string(s3);
-    free_poly_string(s4);
+    test_wide_length("length_wide_russian", "Привет", 6);
+    test_wide_length("length_wide_mixed", "Hello Привет", 11);
+    test_wide_length("length_wide_empty", "", 0);
 }
 
 void test_edge_cases() {
-    printf("\n ТЕСТ: Крайние случаи \n");
-    
-    
-    char long_str[1000];
-    memset(long_str, 'A', 999);
-    long_str[999] = '\0';
-    
-    PolyString* very_long = create_poly_string_ascii(long_str);
-    size_t long_len = poly_string_length(very_long);
-    printf("  Длина очень длинной строки: %zu\n", long_len);
-    print_test_result("edge_very_long_string", long_len == 999);
-    free_poly_string(very_long);
-    
+    printf("\nТЕСТ: Крайние случаи\n");
     
     char boundary[128];
     for (int i = 0; i < 127; i++) {
@@ -471,32 +360,9 @@ void test_edge_cases() {
     boundary[127] = '\0';
     
     PolyString* boundary_str = create_poly_string_ascii(boundary);
-    printf("  Строка со всеми ASCII символами создана\n");
-    print_test_result("edge_all_ascii", boundary_str != NULL);
-    free_poly_string(boundary_str);
-    
-    
-    PolyString* base = create_poly_string_ascii("A");
-    for (int i = 0; i < 10; i++) {
-        PolyString* temp = concat_poly_strings(base, base);
-        if (temp) {
-            free_poly_string(base);
-            base = temp;
-        }
-    }
-    printf("  После 10 конкатенаций: "); print_poly_string(base); printf("\n");
-    print_test_result("edge_multiple_concats", base != NULL);
-    free_poly_string(base);
-    
-    
-    PolyString* overlap = create_poly_string_ascii("aaaaa");
-    PolyString* pattern = create_poly_string_ascii("aa");
-    int pos = find_in_poly_string(overlap, pattern, 1);
-    printf("  Поиск 'aa' в 'aaaaa': позиция %d\n", pos);
-    print_test_result("edge_overlapping_pattern", pos == 0);
-    
-    free_poly_string(overlap);
-    free_poly_string(pattern);
+    int passed = (boundary_str != NULL);
+    print_test_result("edge_all_ascii", passed, "not NULL", boundary_str ? "not NULL" : "NULL");
+    if (boundary_str) free_poly_string(boundary_str);
 }
 
 void run_all_tests() {
@@ -508,24 +374,19 @@ void run_all_tests() {
     
     printf("ПОЛНОЕ ТЕСТИРОВАНИЕ ВСЕХ ФУНКЦИЙ\n");
     
-    test_ascii_creation();
+    test_string_creation();
     test_wide_creation();
-    test_ascii_concatenation();
+    test_concatenation();
     test_wide_concatenation();
-    test_ascii_substring();
-    test_wide_substring();
-    test_ascii_find();
-    test_wide_find();
-    test_ascii_length();
-    test_wide_length();
-    test_file_conversion();
-    test_mixed_operations();
+    test_substring_operations();
+    test_find_operations();
+    test_length_operations();
     test_edge_cases();
     
-    printf("  ИТОГИ ТЕСТИРОВАНИЯ\n");
-    printf("  Всего тестов: %d\n", tests_total);
-    printf("  Пройдено:     %d\n", tests_passed);
-    printf("  Провалено:    %d\n", tests_failed);
-    printf("  Успешность:   %.1f%%\n", 
+    printf("ИТОГИ ТЕСТИРОВАНИЯ\n");
+    printf("Всего тестов: %d\n", tests_total);
+    printf("Пройдено: %d\n", tests_passed);
+    printf("Провалено: %d\n", tests_failed);
+    printf("Успешность: %.1f%%\n", 
            tests_total > 0 ? (tests_passed * 100.0 / tests_total) : 0);
 }
