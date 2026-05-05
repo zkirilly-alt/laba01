@@ -1,31 +1,57 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c11 -g
+AR = ar
+ARFLAGS = rcs
+
+LIB_DIR = lib
+LIBRARY = $(LIB_DIR)/libstring.a
+
 TARGET = program
-OBJS = main.o inout.o string_poly.o test_poly.o
+TEST_TARGET = test_program
 
-all: $(TARGET)
+OBJS = string_poly.o
+IO_OBJS = inout.o
+TEST_OBJS = tests/test_poly.o tests/test_main.o
 
-$(TARGET): $(OBJS)
-	$(CC) $(OBJS) -o $(TARGET)
+all: $(LIB_DIR) $(LIBRARY) $(TARGET)
 
-main.o: main.c string_poly.h test_poly.h
+$(LIB_DIR):
+	mkdir -p $(LIB_DIR)
+
+$(LIBRARY): $(OBJS)
+	$(AR) $(ARFLAGS) $@ $^
+
+$(TARGET): main.o $(IO_OBJS) $(LIBRARY)
+	$(CC) main.o $(IO_OBJS) -L$(LIB_DIR) -lstring -o $@
+
+$(TEST_TARGET): $(TEST_OBJS) $(LIBRARY)
+	$(CC) $(TEST_OBJS) -L$(LIB_DIR) -lstring -o $@
+
+main.o: main.c inout.h string_poly.h
 	$(CC) $(CFLAGS) -c main.c -o main.o
-
-inout.o: inout.c inout.h
-	$(CC) $(CFLAGS) -c inout.c -o inout.o
 
 string_poly.o: string_poly.c string_poly.h
 	$(CC) $(CFLAGS) -c string_poly.c -o string_poly.o
 
-test_poly.o: test_poly.c test_poly.h string_poly.h
-	$(CC) $(CFLAGS) -c test_poly.c -o test_poly.o
+inout.o: inout.c inout.h string_poly.h
+	$(CC) $(CFLAGS) -c inout.c -o inout.o
 
-clean:
-	rm -f $(OBJS) $(TARGET)
+tests/test_poly.o: tests/test_poly.c test_poly.h string_poly.h
+	$(CC) $(CFLAGS) -c tests/test_poly.c -o tests/test_poly.o
+
+tests/test_main.o: tests/test_main.c test_poly.h
+	$(CC) $(CFLAGS) -c tests/test_main.c -o tests/test_main.o
+
+test: $(TEST_TARGET)
+	./$(TEST_TARGET)
 
 run: $(TARGET)
 	./$(TARGET)
 
-rebuild: clean all
+clean:
+	rm -f $(OBJS) $(IO_OBJS) main.o $(LIBRARY) $(TARGET)
+	rm -f $(TEST_OBJS) $(TEST_TARGET)
+	rmdir $(LIB_DIR) 2>/dev/null || true
 
-.PHONY: all clean run rebuild
+
+.PHONY: all clean run rebuild test rebuild_test

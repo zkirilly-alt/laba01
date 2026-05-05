@@ -1,45 +1,35 @@
 #pragma once
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <stddef.h>
 #include <wchar.h>
-#include <locale.h>
-
 
 typedef struct StringTypeInfo StringTypeInfo;
 
 typedef struct {
     void* data;
-    StringTypeInfo* type;
+    const StringTypeInfo* type;
 } PolyString;
 
 struct StringTypeInfo {
-    void (*print)(const void*);
-    PolyString* (*concat)(const PolyString*, const PolyString*);
-    PolyString* (*substring)(const PolyString*, int, int);
-    int (*find)(const PolyString*, const PolyString*, int);
-    size_t (*length)(const void*);
-    void (*free)(void*);
-    char* (*to_file_string)(const void*);
+    void (*print_to_buffer)(const void* data, char* buffer, size_t buffer_size);
+    PolyString* (*concat)(const PolyString* a, const PolyString* b);
+    PolyString* (*substring)(const PolyString* str, int start, int end);
+    int (*find)(const PolyString* text, const PolyString* pattern, int sensitive);
+    size_t (*length)(const void* data);
+    void (*free)(void* data);
+    char* (*to_utf8)(const void* data);
 };
 
-extern const size_t POLY_STRING_BUFFER_SIZE;
-extern const size_t POLY_STRING_ARRAY_INITIAL_CAPACITY;
+extern const StringTypeInfo AsciiType;
+extern const StringTypeInfo WideType;
 
 PolyString* create_poly_string_ascii(const char* str);
 PolyString* create_poly_string_wide(const wchar_t* str);
 PolyString* create_poly_string_wide_from_utf8(const char* utf8_str);
 void free_poly_string(PolyString* str);
-void print_poly_string(const PolyString* str);
+void print_poly_string_to_buffer(const PolyString* str, char* buffer, size_t buffer_size);
 PolyString* concat_poly_strings(const PolyString* a, const PolyString* b);
 PolyString* substring_poly_string(const PolyString* str, int start, int end);
 int find_in_poly_string(const PolyString* text, const PolyString* pattern, int sensitive);
 size_t poly_string_length(const PolyString* str);
-char* poly_string_to_file_format(const PolyString* str);
-void clear_input_buffer();
-PolyString* get_poly_string_from_source(const char* prompt);
-void run_string_operations_menu();
-
-void demo_concatenation();
-void demo_substring();
-void demo_search(int sensitive);
+char* poly_string_to_utf8(const PolyString* str);
+int is_ascii_only(const char* str);
